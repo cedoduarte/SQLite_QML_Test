@@ -1,0 +1,99 @@
+import QtQuick 2.6
+import QtQuick.Controls 2.1
+import QtQuick.Controls 1.4
+import QtQuick.LocalStorage 2.0
+
+ApplicationWindow {
+    id: mainWindow
+    visible: true
+    width: 640
+    height: 480
+    title: "SQLite Application"
+
+    property var db
+
+    Component.onCompleted: {
+        db = LocalStorage.openDatabaseSync("QQmlExampleDB", "1.0", "The Example QML SQL!", 1000000);
+        db.transaction(function(tx) {
+            // Create the database if it doesn't already exist
+            tx.executeSql('CREATE TABLE IF NOT EXISTS person(name TEXT, age INT)');
+        });
+    }
+
+    Column {
+        id: mainForm
+        spacing: 0
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+        height: nameTextField.height * 3
+        Row {
+            Label {
+                text: "Enter name"
+            }
+            TextField {
+                id: nameTextField
+                placeholderText: "Name"
+            }
+        }
+
+        Row {
+            id: ageRow
+            Label {
+                text: "Enter age"
+            }
+            TextField {
+                id: ageTextField
+                placeholderText: "Age"
+            }
+        }
+        Row {
+            Button {
+                text: "Save"
+                onClicked: {
+                    db.transaction(function(tx) {
+                        tx.executeSql('INSERT INTO person VALUES(?, ?)', [ nameTextField.text, ageTextField.text ]);
+                    });
+                }
+            }
+            Button {
+                text: "Read"
+                onClicked: {
+                    myModel.clear();
+                    db.transaction(function(tx) {
+                        var rs = tx.executeSql('SELECT * FROM person');
+                        for (var ix = 0; ix < rs.rows.length; ix++) {
+                            myModel.append({
+                                name: rs.rows.item(ix).name,
+                                age: rs.rows.item(ix).age
+                            });
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    TableView {
+        id: myTableView
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+            top: mainForm.bottom
+        }
+        model: ListModel {
+            id: myModel
+        }
+        TableViewColumn {
+            role: "name"
+            title: "Name"
+        }
+        TableViewColumn {
+            role: "age"
+            title: "Age"
+        }
+    }
+}
